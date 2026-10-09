@@ -1,0 +1,39 @@
+{
+  "name": "JARVIS",
+  "short_name": "JARVIS",
+  "description": "Personal AI Butler — runs on your PC, controls everything",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#080810",
+  "theme_color": "#080810",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Morning Briefing",
+      "short_name": "Briefing",
+      "description": "Get your daily morning briefing",
+      "url": "/?q=morning+briefing"
+    },
+    {
+      "name": "Market Scan",
+      "short_name": "Markets",
+      "description": "Scan the market for signals",
+      "url": "/?q=scan+the+market"
+    }
+  ]
+}

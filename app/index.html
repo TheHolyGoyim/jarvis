@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<meta name="theme-color" content="#080810">
+<title>JARVIS</title>
+<link rel="manifest" href="/manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d;--surface:#0e0f1a;--panel:#12131f;--border:rgba(255,255,255,.09);
+  --accent:#5ec8ff;--accent2:#b083ff;--accent3:#7ee8c1;--green:#3ddc97;--red:#ff5d7a;
+  --text:#eef0f6;--muted:#8a8ca3;
+  --glass:rgba(15,16,26,.62);--glass-strong:rgba(12,13,22,.82);
+  --radius-lg:26px;--radius-md:18px;--radius-sm:12px;
+  --st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);
+  --sys-font:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Segoe UI Variable Display','Segoe UI',Roboto,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:radial-gradient(ellipse 120% 80% at 50% -10%,#141a2e 0%,var(--bg) 55%);color:var(--text);font-family:var(--sys-font);overflow:hidden;position:fixed;width:100%;letter-spacing:-.01em}
+
+/* ── Breathing cloud — fixed decorative layer, screen-blended so it only
+   ever adds light and never hurts legibility of anything drawn above it ── */
+.cloud-layer{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.cloud-blob{position:absolute;border-radius:50%;filter:blur(64px);mix-blend-mode:screen;opacity:.55;will-change:transform,opacity}
+.cloud-blob.b1{width:62vmax;height:62vmax;left:-18vmax;top:-30vmax;
+  background:radial-gradient(circle,var(--accent) 0%,transparent 70%);
+  animation:breathe1 9s ease-in-out infinite}
+.cloud-blob.b2{width:52vmax;height:52vmax;right:-20vmax;top:-24vmax;
+  background:radial-gradient(circle,var(--accent2) 0%,transparent 70%);
+  animation:breathe2 11s ease-in-out infinite 1.2s}
+.cloud-blob.b3{width:44vmax;height:44vmax;left:10vmax;top:-22vmax;
+  background:radial-gradient(circle,var(--accent3) 0%,transparent 72%);
+  animation:breathe3 13s ease-in-out infinite .5s;opacity:.35}
+@keyframes breathe1{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.12) translate(2vmax,3vmax)}}
+@keyframes breathe2{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.16) translate(-3vmax,2vmax)}}
+@keyframes breathe3{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.2) translate(1vmax,-2vmax)}}
+/* State reactions — same blobs, different tempo/tint so the cloud reads as alive */
+body.state-thinking .cloud-blob{animation-duration:2.6s;opacity:.75;filter:blur(56px) brightness(1.25)}
+body.state-listening .cloud-blob.b1,body.state-listening .cloud-blob.b3{
+  background:radial-gradient(circle,var(--green) 0%,transparent 70%)}
+body.state-listening .cloud-blob{animation-duration:1.8s;opacity:.8}
+body.state-speaking .cloud-blob{animation-duration:2.1s;opacity:.7;filter:blur(60px) brightness(1.15)}
+@media (prefers-reduced-motion:reduce){.cloud-blob{animation:none!important}}
+
+/* App shell */
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;padding-top:var(--st);padding-bottom:var(--sb)}
+
+/* Header */
+.hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--border);background:var(--glass);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%)}
+.logo{display:flex;align-items:center;gap:11px}
+.logo-box{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 18px rgba(94,200,255,.35)}
+.logo-box svg{width:19px;height:19px;stroke:#0a0a12}
+.logo-name{font-family:var(--sys-font);font-size:17px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--muted);font-weight:500}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.pill{display:flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--border);border-radius:20px;background:rgba(255,255,255,.03);font-family:var(--sys-font);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red)}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.gear{width:34px;height:34px;border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);background:rgba(255,255,255,.03);flex-shrink:0;transition:all .15s}
+.gear:active{border-color:var(--accent);color:var(--accent);transform:scale(.92)}
+
+/* Category tabs */
+.tabs{flex-shrink:0;display:flex;gap:6px;padding:9px 16px 7px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;background:var(--glass);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:7px 13px;border:1px solid var(--border);border-radius:16px;background:rgba(255,255,255,.03);color:var(--muted);font-size:12.5px;font-family:var(--sys-font);font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.tab.on{background:linear-gradient(135deg,rgba(94,200,255,.22),rgba(176,131,255,.18));border-color:var(--accent);color:var(--text)}
+
+/* Quick actions */
+.qpanel{flex-shrink:0;display:none;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--glass)}
+.qpanel.show{display:block}
+.qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.qitem{padding:10px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:all .15s}
+.qitem:active{background:rgba(94,200,255,.12);border-color:var(--accent);transform:scale(.94)}
+.qi{font-size:17px;display:block;margin-bottom:3px}
+.ql{font-size:10px;color:var(--muted);font-weight:600}
+
+/* Messages */
+.msgs{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.msgs::-webkit-scrollbar{display:none}
+.msg{display:flex;gap:9px;animation:pop .25s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.msg.u{flex-direction:row-reverse}
+.av{width:30px;height:30px;flex-shrink:0;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-top:2px;font-size:12px}
+.av.ai{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0a0a12;font-weight:700;font-size:9px;letter-spacing:.5px;box-shadow:0 2px 10px rgba(94,200,255,.3)}
+.av.u{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text)}
+.bbl{max-width:82%;padding:11px 14px;border-radius:19px;font-size:var(--chatfs,15px);font-family:var(--chatfont,var(--sys-font));line-height:1.5;font-weight:400;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.msg.ai .bbl{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:6px}
+/* Report card: tool output with aligned columns/rules needs monospace or it
+   collapses into an unreadable jumble in the proportional chat font */
+.msg.ai .bbl.report{font-family:'Share Tech Mono','Cascadia Mono','Consolas',monospace;
+  font-size:calc(var(--chatfs,15px) * .72);line-height:1.6;font-weight:400;max-width:96%;width:96%;
+  overflow-x:auto;letter-spacing:0;background:#0a0c16;border-color:rgba(94,200,255,.18);border-radius:var(--radius-sm)}
+.msg.u .bbl{background:linear-gradient(135deg,#2a63c9,#5e3fb0);color:#fff;border:none;border-bottom-right-radius:6px}
+.ts{font-size:10px;color:var(--muted);margin-top:3px;font-weight:500}
+.msg.u .ts{text-align:right}
+.typing{display:flex;gap:4px;align-items:center;padding:12px 14px}
+.td{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:t 1.2s ease-in-out infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes t{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-5px);opacity:1}}
+
+/* Input */
+.ibar{flex-shrink:0;display:flex;align-items:flex-end;gap:8px;padding:10px 14px 12px;border-top:1px solid var(--border);background:var(--glass);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px)}
+.iwrap{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:9px 15px;transition:border-color .2s}
+.iwrap:focus-within{border-color:var(--accent)}
+textarea{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--sys-font);font-size:16px;font-weight:400;resize:none;max-height:110px;min-height:22px;line-height:1.4;-webkit-appearance:none;display:block}
+textarea::placeholder{color:var(--muted)}
+.sbtn,.micbtn{width:42px;height:42px;flex-shrink:0;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s}
+.sbtn{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 3px 14px rgba(94,200,255,.3)}
+.sbtn:active{transform:scale(.88)}
+.sbtn:disabled{opacity:.3;pointer-events:none}
+.sbtn svg{width:17px;height:17px;fill:#0a0a12}
+.micbtn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);touch-action:none;-webkit-user-select:none;user-select:none}
+.micbtn svg{width:18px;height:18px}
+.micbtn:active{transform:scale(.9)}
+.micbtn.rec{background:linear-gradient(135deg,var(--red),#ff8a5c);color:#fff;border-color:transparent;
+  box-shadow:0 0 0 0 rgba(255,93,122,.5);animation:micpulse 1.3s ease-out infinite}
+.micbtn.busy{opacity:.5;pointer-events:none}
+@keyframes micpulse{0%{box-shadow:0 0 0 0 rgba(255,93,122,.45)}70%{box-shadow:0 0 0 12px rgba(255,93,122,0)}100%{box-shadow:0 0 0 0 rgba(255,93,122,0)}}
+
+/* ── Settings modal — stays open when keyboard pops ── */
+.smodal{
+  position:fixed;inset:0;z-index:900;
+  background:rgba(4,4,10,.78);
+  backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  display:none;
+  padding:0;
+}
+.smodal.open{display:block}
+.sinner{
+  min-height:100%;
+  padding:calc(var(--st) + 16px) 20px calc(var(--sb) + 24px);
+  display:flex;flex-direction:column;align-items:center;
+}
+.scard{
+  width:100%;max-width:420px;
+  background:var(--glass-strong);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:24px 20px 26px;
+  margin-top:8px;
+  box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+.stitle{font-family:var(--sys-font);font-weight:650;font-size:17px;color:var(--text);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.scls{width:30px;height:30px;border:none;border-radius:50%;background:rgba(255,255,255,.08);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.scls:active{background:rgba(255,255,255,.15);color:var(--text)}
+.flabel{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.finput{
+  width:100%;background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:13px 14px;color:var(--text);
+  font-family:var(--sys-font);font-size:16px;
+  outline:none;-webkit-appearance:none;margin-bottom:4px;
+  /* Prevent iOS from zooming */
+}
+.finput:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(94,200,255,.15)}
+.fhint{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.cres{font-size:12px;font-family:var(--sys-font);padding:11px 13px;border-radius:var(--radius-sm);background:var(--panel);border:1px solid var(--border);color:var(--muted);margin-bottom:12px;min-height:36px}
+.mbtn{width:100%;padding:14px;margin-bottom:8px;border-radius:var(--radius-sm);font-family:var(--sys-font);font-size:14px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s}
+.mbtn.p{background:linear-gradient(135deg,rgba(94,200,255,.18),rgba(176,131,255,.14));border-color:var(--accent);color:var(--text)}
+.mbtn.p:active{transform:scale(.98)}
+.mbtn.s{background:transparent;border-color:var(--border);color:var(--muted)}
+.mbtn.d{background:rgba(255,93,122,.08);border-color:var(--red);color:var(--red)}
+.mdiv{height:1px;background:var(--border);margin:16px 0}
+.minfo{font-size:11px;color:var(--muted);line-height:1.9;text-align:center}
+
+/* File download cards */
+.fcard{margin-top:6px;display:flex;align-items:center;gap:8px;padding:9px 12px;
+  background:rgba(94,200,255,.07);border:1px solid rgba(94,200,255,.2);
+  border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;text-decoration:none}
+.fcard:active{background:rgba(94,200,255,.15)}
+.ficon{font-size:18px;flex-shrink:0}
+.fmeta{flex:1;min-width:0}
+.fname{font-size:12.5px;color:var(--accent);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsize{font-size:10.5px;color:var(--muted);margin-top:1px}
+.fdl{font-size:10.5px;color:var(--accent);border:1px solid var(--accent);
+  border-radius:20px;padding:4px 9px;flex-shrink:0;font-weight:600}
+
+/* Inline chart/image previews — charts Jarvis generates show up here directly */
+.img-wrap{display:block;margin-top:6px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  overflow:hidden;background:var(--panel);max-width:100%}
+.chart-img{display:block;width:100%;max-height:340px;object-fit:contain;cursor:zoom-in}
+.img-cap{font-size:10.5px;color:var(--muted);padding:6px 10px;
+  border-top:1px solid var(--border)}
+
+/* Remote mode badge */
+.remote-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:4px}
+.remote-badge.remote{background:rgba(61,220,151,.12);color:var(--green);border:1px solid var(--green)}
+.remote-badge.local{background:rgba(94,200,255,.08);color:var(--accent);border:1px solid var(--accent)}
+
+/* Files browser */
+.files-list{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+
+/* Commands list (rendered as a chat message) */
+.cmd-cat{font-size:11px;font-weight:700;color:var(--accent);
+  text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px}
+.cmd-cat:first-child{margin-top:2px}
+.cmd-item{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--panel);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.cmd-item:active{background:rgba(94,200,255,.1);border-color:var(--accent)}
+.cmd-label{font-size:13px;font-weight:600;color:var(--text)}
+.cmd-example{font-size:11.5px;color:var(--muted);margin-top:2px}
+.cmd-learned{font-size:11px;color:var(--green);
+  margin-top:5px;padding-top:5px;border-top:1px dashed var(--border)}
+.cmd-output{font-size:11px;color:var(--muted);margin-top:4px;opacity:.85}
+.cmd-output b{color:var(--accent);font-weight:600}
+
+/* Tools catalog (rendered as a chat message) */
+.tool-item{padding:6px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--panel);margin-bottom:4px}
+.tool-name{font-size:12px;font-weight:600;color:var(--text)}
+.tool-desc{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* Portfolio modal */
+.pmodal{position:fixed;inset:0;z-index:900;background:rgba(4,4,10,.78);
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
+.pmodal.open{display:block}
+.pinner{min-height:100%;padding:calc(var(--st) + 16px) 16px calc(var(--sb) + 24px);
+  display:flex;flex-direction:column;align-items:center}
+.pcard{width:100%;max-width:440px;background:var(--glass-strong);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:20px 18px 24px;margin-top:8px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.ptitle{font-family:var(--sys-font);font-weight:650;font-size:17px;color:var(--text);
+  margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.pmode{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:700;
+  letter-spacing:.5px;margin-left:8px}
+.pmode.paper{background:rgba(94,200,255,.1);color:var(--accent);border:1px solid var(--accent)}
+.pmode.live{background:rgba(255,93,122,.12);color:var(--red);border:1px solid var(--red)}
+.pstats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.pstat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.pstat-l{font-size:10.5px;color:var(--muted);font-weight:600}
+.pstat-v{font-size:16px;font-weight:700;margin-top:2px}
+.pstat-v.g{color:var(--green)} .pstat-v.r{color:var(--red)}
+
+/* ── Markets dashboard ── */
+.mkwrap{width:100%;max-width:920px}
+.mkgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+@media(max-width:640px){.mkgrid{grid-template-columns:1fr}}
+.mkcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:13px;position:relative;transition:border-color .3s}
+.mkcard.wide{grid-column:1/-1}
+.mkcard.limit-hit{border-color:var(--red);box-shadow:0 0 12px rgba(255,93,122,.2)}
+.mkl{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.mkv{font-size:22px;font-weight:700;font-family:'Share Tech Mono',monospace;margin-bottom:6px}
+.mkv.g{color:var(--green)}.mkv.r{color:var(--red)}.mkv.a{color:var(--accent)}
+.mkhero{font-size:34px;font-weight:700;font-family:'Share Tech Mono',monospace}
+.mksaved{position:absolute;top:10px;right:12px;font-size:10px;color:var(--green);
+  font-weight:600;opacity:0;transition:opacity .4s}
+.mksaved.show{opacity:1}
+.mklimit{display:none;font-size:11px;color:var(--red);font-weight:600;margin-top:6px}
+.mkcard.limit-hit .mklimit{display:block}
+input[type=range].mkslider{width:100%;-webkit-appearance:none;appearance:none;height:4px;
+  border-radius:2px;background:var(--border);outline:none;margin:8px 0 2px}
+input[type=range].mkslider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;
+  border-radius:50%;background:var(--accent);border:2px solid #0a0c16;cursor:pointer}
+input[type=range].mkslider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
+  background:var(--accent);border:2px solid #0a0c16;cursor:pointer}
+.mkticks{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px}
+.mkseg{display:flex;gap:5px}
+.mkseg button{flex:1;padding:9px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:transparent;color:var(--muted);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .2s}
+.mkseg button.on{background:linear-gradient(135deg,rgba(94,200,255,.2),rgba(176,131,255,.15));border-color:var(--accent);color:var(--text)}
+.mknums{display:flex;gap:4px;flex-wrap:wrap}
+.mknums button{width:34px;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:transparent;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.mknums button.on{background:rgba(94,200,255,.12);border-color:var(--accent);color:var(--accent)}
+.mkbar{height:6px;border-radius:3px;margin-top:6px;transition:all .3s}
+.mktoggle{position:relative;width:66px;height:32px;border-radius:16px;border:1px solid var(--border);
+  background:var(--surface);cursor:pointer;transition:all .25s;flex-shrink:0}
+.mktoggle .knob{position:absolute;top:3px;left:4px;width:24px;height:24px;border-radius:50%;
+  background:var(--muted);transition:all .25s}
+.mktoggle.on{background:rgba(61,220,151,.12);border-color:var(--green)}
+.mktoggle.on .knob{left:36px;background:var(--green)}
+.mktoggle.live{background:rgba(255,93,122,.15);border-color:var(--red)}
+.mktoggle.live .knob{left:36px;background:var(--red)}
+.mkdot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
+.mkdot.on{background:var(--green);animation:mkpulse 1.6s infinite}
+@keyframes mkpulse{0%,100%{box-shadow:0 0 0 0 rgba(61,220,151,.5)}50%{box-shadow:0 0 0 6px rgba(61,220,151,0)}}
+.mkrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mkchips{display:flex;flex-wrap:wrap;gap:6px}
+.mkchip{background:rgba(255,93,122,.12);border:1px solid var(--red);color:var(--red);
+  padding:4px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+.mkchip b{cursor:pointer;margin-left:5px}
+.mkadd{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:transparent;
+  color:var(--accent);font-size:15px;cursor:pointer}
+.mksectors{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px}
+.mksectors label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text)}
+.mksectors input{accent-color:var(--accent)}
+select.mksel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);padding:9px;font-family:var(--sys-font);font-size:12.5px}
+.mktbl{width:100%;border-collapse:collapse;font-size:11.5px;font-family:'Share Tech Mono',monospace}
+.mktbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mktbl th{color:var(--muted);font-size:10px;text-align:right;padding:6px 7px;
+  border-bottom:1px solid var(--border)}
+.mktbl td{padding:7px 7px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.mktbl th:first-child,.mktbl td:first-child{text-align:left}
+.mktbl tr.pos-g td{color:var(--green)} .mktbl tr.pos-r td{color:var(--red)}
+.mktbl tr.pos-g td:first-child,.mktbl tr.pos-r td:first-child{color:var(--text);font-weight:700}
+.mkreset{width:100%;margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:transparent;color:var(--muted);font-family:var(--sys-font);
+  font-size:12.5px;font-weight:600;cursor:pointer}
+.mkconfirm{position:fixed;inset:0;z-index:990;background:rgba(4,4,10,.8);display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(10px)}
+.mkconfirm.open{display:flex}
+.mkconfirm .box{background:var(--glass-strong);border:1px solid var(--red);border-radius:var(--radius-lg);
+  padding:22px;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.psec{font-size:11.5px;color:var(--muted);font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;margin:16px 0 7px}
+.prow{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:9px 11px;margin-bottom:7px;font-size:12.5px}
+.prow-top{display:flex;justify-content:space-between;font-weight:700}
+.prow-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.pempty{font-size:12px;color:var(--muted);text-align:center;padding:10px}
+.pstale{font-size:11px;color:var(--red);text-align:center;margin-top:8px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="cloud-layer" id="cloudLayer" aria-hidden="true">
+  <div class="cloud-blob b1"></div>
+  <div class="cloud-blob b2"></div>
+  <div class="cloud-blob b3"></div>
+</div>
+<div id="app">
+  <div class="hdr">
+    <div class="logo">
+      <div class="logo-box"><svg viewBox="0 0 24 24" fill="none" stroke="#0a0a12" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M2 12h2M20 12h2M12 2v2M12 20v2"/></svg></div>
+      <div><div class="logo-name">JARVIS</div><div class="logo-sub">Personal Butler</div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="pill" id="aipill" title="Ollama AI engine"><div class="dot" id="aidot"></div><span id="aitxt">AI</span></div>
+      <div class="pill" id="pill" onclick="openSettings()"><div class="dot" id="dot"></div><span id="stxt">OFFLINE</span></div>
+      <button class="gear" onclick="openSettings()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" onclick="setTab('all',this)">All</button>
+    <button class="tab" onclick="setTab('daily',this)">☀️ Daily</button>
+    <button class="tab" onclick="setTab('money',this)">💰 Money</button>
+    <button class="tab" onclick="openMarkets()">📈 Markets</button>
+    <button class="tab" onclick="setTab('health',this)">💪 Health</button>
+    <button class="tab" onclick="setTab('home',this)">🏠 Home</button>
+    <button class="tab" onclick="setTab('travel',this)">✈️ Travel</button>
+    <button class="tab" onclick="setTab('tech',this)">🔧 Tech</button>
+    <button class="tab" onclick="setTab('fun',this)">🎉 Fun</button>
+    <button class="tab" onclick="openPortfolio()">💼 Portfolio</button>
+    <button class="tab" onclick="openCommands()">📖 Commands</button>
+    <button class="tab" onclick="openTools()">🧰 Tools</button>
+    <button class="tab" onclick="openFiles()">📁 Files</button>
+  </div>
+
+  <div class="qpanel" id="qpanel"><div class="qgrid" id="qgrid"></div></div>
+
+  <div class="msgs" id="msgs">
+    <div class="msg ai">
+      <div class="av ai">AI</div>
+      <div>
+        <div class="bbl">Good day. I'm JARVIS — your personal AI butler.
+
+• ☀️ Daily briefings, tasks, habits, notes
+• 💰 Bills, budgets, spending, goals, trading
+• 💪 Medications, workouts, health tracking
+• 📧 Email, contacts, DocuSign contracts
+• 🏠 PC control, smart home, tech support
+• ✈️ Flights, hotels, Uber, trip planning
+• 🛒 Groceries, pantry, food delivery
+• 🎉 Movies, restaurants, events, gifts
+• 🔍 Weather, news, directions, research
+
+Just talk to me naturally. What do you need?</div>
+        <div class="ts" id="wt"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ibar">
+    <button class="micbtn" id="micbtn" title="Hold to speak to Jarvis"
+      onpointerdown="startMic(event)" oncontextmenu="return false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4M8 23h8"/></svg>
+    </button>
+    <div class="iwrap">
+      <textarea id="inp" placeholder="Ask JARVIS anything..." rows="1"
+        onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+    </div>
+    <button class="sbtn" id="sbtn" onclick="send()">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="smodal" id="smodal">
+  <div class="sinner">
+    <div class="scard">
+      <div class="stitle">
+        // JARVIS SETTINGS
+        <button class="scls" onclick="closeSettings()">✕</button>
+      </div>
+
+      <div class="flabel">JARVIS Server URL</div>
+      <input class="finput" id="ipinput" type="text"
+        inputmode="url"
+        autocomplete="off" autocorrect="off"
+        autocapitalize="none" spellcheck="false"
+        placeholder="https://abc123.ngrok.io  or  192.168.1.x:5000">
+      <div class="fhint">
+        Same WiFi: run ipconfig on PC, use that IP:5000<br>
+        Cellular: run python remote.py on PC, paste the https:// URL
+      </div>
+
+      <div class="flabel" style="margin-top:10px">API Key (for remote access)</div>
+      <input class="finput" id="keyinput" type="text"
+        autocomplete="off" autocorrect="off"
+        autocapitalize="none" spellcheck="false"
+        placeholder="jrv_xxxxxx... (from remote.py output)">
+      <div class="fhint">Leave blank for same-WiFi access. Required when using ngrok/tunnel.</div>
+
+      <div class="flabel" style="margin-top:10px">Chat Font</div>
+      <select class="finput" id="fontsel" onchange="applyFont()">
+        <option value="'Rajdhani',sans-serif">Rajdhani (default)</option>
+        <option value="'Share Tech Mono',monospace">Share Tech Mono</option>
+        <option value="'Segoe UI',system-ui,sans-serif">Segoe UI</option>
+        <option value="Georgia,serif">Georgia</option>
+      </select>
+      <div class="flabel" style="margin-top:10px">Font Size</div>
+      <select class="finput" id="fontsize" onchange="applyFont()">
+        <option value="12">Small</option>
+        <option value="14">Default</option>
+        <option value="16">Large</option>
+        <option value="18">Extra Large</option>
+      </select>
+      <div class="fhint">Applies to chat messages instantly. Reports scale with it.</div>
+
+      <div class="mdiv"></div>
+      <div class="flabel">Voice</div>
+      <div class="mkrow" style="margin-bottom:12px">
+        <div style="font-size:13px">Speak replies out loud</div>
+        <div class="mktoggle" id="voiceAutoToggle" onclick="toggleAutoSpeak()"><div class="knob"></div></div>
+      </div>
+      <select class="finput" id="voicePresetSel" onchange="setVoicePreset(this.value)"></select>
+      <div class="fhint" id="voiceHint">Loading voices…</div>
+      <div style="display:flex;gap:7px;margin-bottom:6px">
+        <button class="mbtn s" style="margin:0" onclick="testVoice()">TEST VOICE</button>
+        <button class="mbtn s" style="margin:0" onclick="manageVoicePresets()">MANAGE PRESETS</button>
+      </div>
+      <div id="voiceManage" style="display:none;margin-top:8px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm)">
+        <div class="flabel">System Voice</div>
+        <select class="finput" id="vmVoice"></select>
+        <div class="flabel" style="margin-top:8px">Speed <span id="vmRateVal" style="color:var(--accent)"></span></div>
+        <input type="range" class="mkslider" id="vmRate" min="80" max="320" step="5"
+          oninput="document.getElementById('vmRateVal').textContent=this.value">
+        <div class="flabel" style="margin-top:8px">Preset Name</div>
+        <input class="finput" id="vmName" placeholder="e.g. Morning Briefing Voice">
+        <button class="mbtn p" style="margin-top:8px" onclick="saveVoicePreset()">SAVE AS NEW PRESET</button>
+        <button class="mbtn d" onclick="deleteVoicePreset()">DELETE SELECTED PRESET</button>
+      </div>
+
+      <div class="cres" id="cres">Tap TEST CONNECTION to verify</div>
+
+      <button class="mbtn p" onclick="testConn()">TEST CONNECTION</button>
+      <button class="mbtn p" onclick="save()">SAVE &amp; CONNECT</button>
+      <div class="mdiv"></div>
+      <button class="mbtn s" onclick="openFiles()">BROWSE FILES FROM PC</button>
+      <div class="mdiv"></div>
+      <button class="mbtn d" onclick="clearChat()">CLEAR CHAT HISTORY</button>
+      <div class="mdiv"></div>
+      <div class="minfo">
+        JARVIS v4.3 · 300+ tools loaded (see 🧰 Tools tab)<br>
+        AI runs on your PC · Your data never leaves<br>
+        <span id="conn-mode" style="color:var(--accent)">Not connected</span><br>
+        <span id="sess-info" style="color:var(--muted)"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Portfolio Modal (live tracker) -->
+<div class="pmodal" id="pmodal">
+  <div class="pinner">
+    <div class="pcard">
+      <div class="ptitle">
+        // PORTFOLIO<span class="pmode" id="pmode">?</span>
+        <button class="scls" onclick="closePortfolio()" style="margin-left:auto">✕</button>
+      </div>
+      <div id="pbody"><div class="pempty">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Markets Dashboard Modal -->
+<div class="pmodal" id="mkmodal">
+  <div class="pinner">
+    <div class="pcard mkwrap">
+      <div class="ptitle">// MARKETS
+        <button class="scls" onclick="closeMarkets()" style="margin-left:auto">✕</button>
+      </div>
+
+      <!-- SECTION 1: PORTFOLIO -->
+      <div class="pstats" style="grid-template-columns:repeat(2,1fr)">
+        <div class="pstat" style="grid-column:1/-1">
+          <div class="pstat-l">Total Portfolio Value</div>
+          <div class="mkhero" id="mk-equity">—</div>
+        </div>
+        <div class="pstat"><div class="pstat-l">Day P&amp;L</div>
+          <div class="pstat-v" id="mk-daypl">—</div></div>
+        <div class="pstat"><div class="pstat-l">Cash / Buying Power</div>
+          <div class="pstat-v" id="mk-cash">—</div></div>
+        <div class="pstat" style="grid-column:1/-1" id="mk-geocard">
+          <div class="pstat-l">Geopolitical Risk</div>
+          <div class="pstat-v" id="mk-geo">—</div>
+          <div style="font-size:9px;color:var(--muted);font-family:'Share Tech Mono',monospace" id="mk-geomeaning"></div>
+        </div>
+        <div class="pstat" style="grid-column:1/-1" id="mk-outlookcard">
+          <div class="pstat-l">Market Outlook</div>
+          <div class="pstat-v" id="mk-outlook">—</div>
+          <div style="font-size:9px;color:var(--muted);font-family:'Share Tech Mono',monospace" id="mk-outlookmeaning"></div>
+        </div>
+      </div>
+      <div class="mktbl-wrap"><table class="mktbl">
+        <thead><tr><th>Ticker</th><th>Today</th><th>Sh</th><th>Avg</th><th>Now</th>
+          <th>Today %</th><th>P&amp;L $</th><th>P&amp;L %</th></tr></thead>
+        <tbody id="mk-positions"><tr><td colspan="8">Loading...</td></tr></tbody>
+      </table></div>
+
+      <!-- OPPORTUNITY QUEUE -->
+      <div class="ptitle" style="margin-top:18px">// OPPORTUNITY QUEUE</div>
+      <div id="mk-queue" style="font-size:11px;font-family:'Share Tech Mono',monospace;color:var(--muted)">Loading...</div>
+
+      <!-- GOAL TRACKER -->
+      <div class="ptitle" style="margin-top:18px">// GOAL</div>
+      <div id="mk-goal" style="font-size:11px;font-family:'Share Tech Mono',monospace;color:var(--muted)">Loading...</div>
+      <div class="mkrow" style="margin-top:8px;gap:6px">
+        <input type="text" id="mk-goaltext" placeholder="e.g. turn 100k into 150k by end of July"
+          style="flex:1;background:#0f1624;border:1px solid #1e3a5f;color:#d8e4f0;font-size:11px;
+                 padding:6px 8px;border-radius:6px;font-family:'Share Tech Mono',monospace">
+        <button class="mkadd" onclick="mkGoalSet()">SET</button>
+        <button class="mkadd" onclick="mkGoalAction('hold')" title="freeze risk profile">HOLD</button>
+        <button class="mkadd" onclick="mkGoalAction('clear')" title="clear goal">✕</button>
+      </div>
+
+      <!-- SECTION 2: RISK PARAMETERS -->
+      <div class="ptitle" style="margin-top:18px">// RISK PARAMETERS</div>
+      <div class="mkgrid" id="mk-risk">
+
+        <div class="mkcard wide" id="card-auto"><span class="mksaved">Saved ✓</span>
+          <div class="mkrow">
+            <div><div class="mkl">Autonomous Trading — Master Switch</div>
+              <div style="font-size:12px"><span class="mkdot" id="mk-autodot"></span>
+              <span id="mk-autotext">—</span></div></div>
+            <div class="mktoggle" id="mk-autotoggle" onclick="mkToggleAuto()"><div class="knob"></div></div>
+          </div>
+        </div>
+
+        <div class="mkcard wide" id="card-profile"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Risk Profile</div>
+          <div class="mkseg" id="mk-profile">
+            <button data-p="conservative" onclick="mkProfile('conservative')">CONSERVATIVE</button>
+            <button data-p="moderate" onclick="mkProfile('moderate')">MODERATE</button>
+            <button data-p="aggressive" onclick="mkProfile('aggressive')">AGGRESSIVE</button>
+            <button data-p="high_risk" onclick="mkProfile('high_risk')">HIGH RISK</button>
+            <button data-p="speculative" onclick="mkProfile('speculative')">SPECULATIVE</button>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px">
+            Goal engine auto-escalates when behind pace — ceiling AGGRESSIVE.
+            High Risk / Speculative are manual-only.</div>
+        </div>
+
+        <div class="mkcard" id="card-pos"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Max Position Size <span style="opacity:.6">(% of buying power)</span></div>
+          <div class="mkv a" id="mk-posval">—%</div>
+          <input type="range" class="mkslider" id="mk-possize" min="1" max="25" step="0.5"
+            oninput="mkSlide('possize')" onchange="mkPost('max_position_pct', +this.value, 'card-pos')">
+          <div class="mkticks"><span>1%</span><span>5%</span><span>10%</span><span>15%</span><span>25%</span></div>
+        </div>
+
+        <div class="mkcard" id="card-loss"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Max Daily Loss <span style="opacity:.6">(% of portfolio)</span></div>
+          <div class="mkv r" id="mk-lossval">—%</div>
+          <input type="range" class="mkslider" id="mk-dailyloss" min="0.5" max="10" step="0.5"
+            oninput="mkSlide('dailyloss')" onchange="mkPost('max_daily_loss_pct', +this.value, 'card-loss')">
+          <div class="mklimit">DAILY LIMIT REACHED — Trading Paused</div>
+        </div>
+
+        <div class="mkcard" id="card-reserve"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Min Cash Reserve <span style="opacity:.6">(positions: unlimited)</span></div>
+          <div class="mkv a" id="mk-reserveval">—%</div>
+          <input type="range" class="mkslider" id="mk-reserve" min="0" max="50" step="5"
+            oninput="mkSlide('reserve')" onchange="mkPost('min_cash_reserve_pct', +this.value, 'card-reserve')">
+          <div class="mkticks"><span>0%</span><span>10%</span><span>25%</span><span>50%</span></div>
+        </div>
+
+        <div class="mkcard" id="card-conv"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Min Conviction Score</div>
+          <div class="mkv" id="mk-convval">—/10</div>
+          <input type="range" class="mkslider" id="mk-conviction" min="1" max="10" step="1"
+            oninput="mkSlide('conviction')" onchange="mkPost('min_conviction', +this.value, 'card-conv')">
+          <div class="mkbar" id="mk-convbar"></div>
+        </div>
+
+        <div class="mkcard" id="card-stop"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Stop Loss</div>
+          <div class="mkv r" id="mk-stopval">—%</div>
+          <input type="range" class="mkslider" id="mk-stoploss" min="1" max="15" step="0.5"
+            oninput="mkSlide('stoploss')" onchange="mkPost('stop_loss_pct', +this.value, 'card-stop')">
+        </div>
+
+        <div class="mkcard" id="card-tp"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Take Profit</div>
+          <div class="mkv g" id="mk-tpval">—%</div>
+          <input type="range" class="mkslider" id="mk-takeprofit" min="3" max="100" step="1"
+            oninput="mkSlide('takeprofit')" onchange="mkPost('take_profit_pct', +this.value, 'card-tp')">
+        </div>
+
+        <div class="mkcard" id="card-hours"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Trading Hours (ET)</div>
+          <div class="mkrow">
+            <select class="mksel" id="mk-hstart" onchange="mkPost('trading_hours_start', this.value, 'card-hours')"></select>
+            <span style="color:var(--muted);font-size:11px">TO</span>
+            <select class="mksel" id="mk-hend" onchange="mkPost('trading_hours_end', this.value, 'card-hours')"></select>
+          </div>
+        </div>
+
+        <div class="mkcard" id="card-mode"><span class="mksaved">Saved ✓</span>
+          <div class="mkrow">
+            <div><div class="mkl">Trading Mode</div>
+              <div style="font-size:13px;font-weight:700" id="mk-modetext">—</div></div>
+            <div class="mktoggle" id="mk-modetoggle" onclick="mkToggleMode()"><div class="knob"></div></div>
+          </div>
+        </div>
+
+        <div class="mkcard" id="card-blocked"><span class="mksaved">Saved ✓</span>
+          <div class="mkrow" style="margin-bottom:6px">
+            <div class="mkl" style="margin:0">Blocked Tickers</div>
+            <button class="mkadd" onclick="mkBlockAdd()">＋</button>
+          </div>
+          <div class="mkchips" id="mk-blocked"></div>
+        </div>
+
+        <div class="mkcard wide" id="card-sectors"><span class="mksaved">Saved ✓</span>
+          <div class="mkl">Allowed Sectors</div>
+          <div class="mksectors" id="mk-sectors"></div>
+        </div>
+      </div>
+      <button class="mkreset" onclick="mkReset()">RESET TO DEFAULTS</button>
+    </div>
+  </div>
+</div>
+
+<!-- Live-trading confirmation -->
+<div class="mkconfirm" id="mk-confirm">
+  <div class="box">
+    <div style="font-size:15px;font-weight:700;color:var(--red);margin-bottom:8px">⚠ Switch to LIVE trading?</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">This will use real money.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Auto-cancelling in <span id="mk-count">10</span>s...</div>
+    <div style="display:flex;gap:8px">
+      <button class="mbtn d" style="margin:0" onclick="mkLiveConfirm(true)">CONFIRM</button>
+      <button class="mbtn p" style="margin:0" id="mk-cancelbtn" onclick="mkLiveConfirm(false)">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Service Worker registration ────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Quick action data
+const TABS = {
+  daily:[
+    {i:"☀️",l:"Briefing",m:"Give me my morning briefing"},
+    {i:"📋",l:"Tasks",m:"Show my tasks"},
+    {i:"✅",l:"Add Task",m:"Add a task: "},
+    {i:"✨",l:"Habits",m:"Show my habits"},
+    {i:"📝",l:"Notes",m:"Show my recent notes"},
+    {i:"🗓️",l:"Plan Day",m:"Plan my day"},
+  ],
+  money:[
+    {i:"💳",l:"Bills",m:"Show all my bills"},
+    {i:"🔍",l:"Audit",m:"Audit my bills and subscriptions"},
+    {i:"⚠️",l:"Due Soon",m:"What bills are due this week?"},
+    {i:"📊",l:"Budget",m:"Show my budget"},
+    {i:"💰",l:"Spending",m:"Show my spending this month"},
+    {i:"🎯",l:"Goals",m:"Show my financial goals"},
+  ],
+  markets:[
+    {i:"📊",l:"Scan",m:"scan the market"},
+    {i:"📈",l:"Signal",m:"trade signal "},
+    {i:"🔎",l:"Technicals",m:"technicals on "},
+    {i:"₿",l:"Crypto",m:"crypto prices"},
+    {i:"👁",l:"Watchlist",m:"show my watchlist"},
+    {i:"📰",l:"News",m:"market news"},
+    {i:"💼",l:"Portfolio",m:"show my paper portfolio"},
+    {i:"🎯",l:"Retire",m:"retirement plan"},
+    {i:"📅",l:"Calendar",m:"market calendar"},
+  ],
+  health:[
+    {i:"💊",l:"Meds",m:"What medications do I have today?"},
+    {i:"🏋️",l:"Workout",m:"Log a workout: "},
+    {i:"📊",l:"Summary",m:"Show my health summary"},
+    {i:"⚖️",l:"Weight",m:"Log my weight: "},
+    {i:"💧",l:"Water",m:"Log water intake: 8 glasses"},
+    {i:"📈",l:"Streaks",m:"Show my habit streaks"},
+  ],
+  home:[
+    {i:"🔊",l:"Volume",m:"Set volume to 50"},
+    {i:"📸",l:"Screenshot",m:"Take a screenshot"},
+    {i:"🔒",l:"Lock PC",m:"Lock my computer"},
+    {i:"🧹",l:"Cleanup",m:"Clean up my disk"},
+    {i:"🚀",l:"Open App",m:"Open "},
+    {i:"⏱️",l:"Timer",m:"Set a timer for 20 minutes"},
+  ],
+  travel:[
+    {i:"✈️",l:"Flights",m:"Search flights from MYR to "},
+    {i:"🏨",l:"Hotels",m:"Find hotels in "},
+    {i:"🚗",l:"Uber",m:"Get an Uber to "},
+    {i:"🗺️",l:"Directions",m:"Get directions to "},
+    {i:"📦",l:"Package",m:"Track my package: "},
+    {i:"🗓️",l:"Trip Plan",m:"Plan a trip to "},
+  ],
+  tech:[
+    {i:"💻",l:"System",m:"Show my system info"},
+    {i:"🌐",l:"Network",m:"Check my internet connection"},
+    {i:"🔧",l:"Fix It",m:"Help me fix: "},
+    {i:"🛡️",l:"Antivirus",m:"Run a virus scan"},
+    {i:"📦",l:"Updates",m:"Check for Windows updates"},
+    {i:"💾",l:"DNS Flush",m:"Flush my DNS"},
+  ],
+  fun:[
+    {i:"🎬",l:"Movies",m:"Recommend movies for tonight"},
+    {i:"📺",l:"Shows",m:"Recommend a show to binge"},
+    {i:"🎵",l:"Music",m:"Play music on Spotify: "},
+    {i:"🍽️",l:"Dining",m:"Find a good restaurant near me"},
+    {i:"🎟️",l:"Events",m:"Find events near me"},
+    {i:"🎁",l:"Gifts",m:"Gift ideas for "},
+  ],
+};
+
+// When the UI is served by the Jarvis server itself (desktop app window /
+// localhost), default to that origin — zero-setup connection. Saved phone
+// setups (custom server + key) still take precedence.
+let server       = localStorage.getItem('j3_server')
+                   || (location.protocol.startsWith('http') ? location.origin : '');
+let apiKey       = localStorage.getItem('j3_apikey')      || '';
+let sessionToken = localStorage.getItem('j3_session')     || '';
+let sessionExpiry= localStorage.getItem('j3_session_exp') || '';
+let busy         = false;
+let isRemote     = false;
+
+// Prune expired session on load
+if (sessionToken && sessionExpiry && new Date(sessionExpiry) <= new Date()) {
+  sessionToken = ''; sessionExpiry = '';
+  localStorage.removeItem('j3_session');
+  localStorage.removeItem('j3_session_exp');
+}
+
+// Init
+document.getElementById('wt').textContent = fmt(new Date());
+if (server) ping();
+setInterval(ping, 20000);
+
+// ── Breathing cloud state ────────────────────────────────────────
+function setCloudState(state){
+  document.body.classList.remove('state-thinking','state-listening','state-speaking');
+  if(state) document.body.classList.add('state-'+state);
+}
+
+// ── Voice: TTS playback + presets ────────────────────────────────
+let autoSpeak = localStorage.getItem('j3_autospeak') === '1';
+let voicePreset = localStorage.getItem('j3_voicepreset') || 'default';
+let voicePresetsCache = null;
+
+function toggleAutoSpeak(){
+  autoSpeak = !autoSpeak;
+  localStorage.setItem('j3_autospeak', autoSpeak ? '1' : '0');
+  document.getElementById('voiceAutoToggle').classList.toggle('on', autoSpeak);
+}
+
+async function loadVoicePresets(){
+  if(!server) return;
+  document.getElementById('voiceAutoToggle').classList.toggle('on', autoSpeak);
+  try{
+    const r = await fetch(server+'/voice/presets', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    const d = await r.json();
+    voicePresetsCache = d;
+    const sel = document.getElementById('voicePresetSel');
+    const hint = document.getElementById('voiceHint');
+    if(!d.installed){
+      hint.textContent = '⚠ Text-to-speech not installed on the PC yet — run: pip install pyttsx3';
+      sel.innerHTML = '<option>Unavailable</option>';
+      return;
+    }
+    sel.innerHTML = (d.presets||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    sel.value = voicePreset || d.default_preset || 'default';
+    const vmSel = document.getElementById('vmVoice');
+    if(vmSel) vmSel.innerHTML = (d.system_voices||[]).map(v=>`<option value="${v.index}">${esc(v.name)}</option>`).join('');
+    hint.textContent = `${(d.system_voices||[]).length} system voice(s) · ${(d.presets||[]).length} preset(s) saved`;
+  }catch(e){}
+}
+
+function setVoicePreset(id){
+  voicePreset = id;
+  localStorage.setItem('j3_voicepreset', id);
+  if(server) fetch(server+'/voice/presets', {method:'POST', headers:_authHeaders(),
+    body: JSON.stringify({action:'set_default', id}), signal:AbortSignal.timeout(8000)}).catch(()=>{});
+}
+
+function testVoice(){ playVoice("Hello, I'm Jarvis. This is how I sound with this preset."); }
+
+function manageVoicePresets(){
+  const el = document.getElementById('voiceManage');
+  const show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  if(show && voicePresetsCache){
+    const cur = (voicePresetsCache.presets||[]).find(p=>p.id===voicePreset);
+    if(cur){
+      document.getElementById('vmVoice').value = cur.voice_index;
+      document.getElementById('vmRate').value = cur.rate;
+      document.getElementById('vmRateVal').textContent = cur.rate;
+    }
+    document.getElementById('vmName').value = '';
+  }
+}
+
+async function saveVoicePreset(){
+  const name = document.getElementById('vmName').value.trim();
+  if(!name){ addMsg('ai','Give the preset a name first.', new Date()); return; }
+  const voice_index = +document.getElementById('vmVoice').value || 0;
+  const rate = +document.getElementById('vmRate').value || 175;
+  try{
+    const r = await fetch(server+'/voice/presets', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({action:'save', preset:{name, voice_index, rate, volume:1.0}}),
+      signal: AbortSignal.timeout(8000)});
+    const d = await r.json();
+    voicePresetsCache = d;
+    const sel = document.getElementById('voicePresetSel');
+    sel.innerHTML = (d.presets||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    const added = (d.presets||[]).find(p=>p.name===name);
+    if(added){ sel.value = added.id; setVoicePreset(added.id); }
+    addMsg('ai', `Saved voice preset "${name}".`, new Date());
+  }catch(e){}
+}
+
+async function deleteVoicePreset(){
+  if(!voicePreset || voicePreset==='default'){ addMsg('ai','Pick a non-default preset to delete first.', new Date()); return; }
+  try{
+    const r = await fetch(server+'/voice/presets', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({action:'delete', id:voicePreset}), signal:AbortSignal.timeout(8000)});
+    const d = await r.json();
+    voicePresetsCache = d;
+    voicePreset = d.default_preset || 'default';
+    loadVoicePresets();
+  }catch(e){}
+}
+
+async function playVoice(text){
+  if(!server || !text) return;
+  try{
+    setCloudState('speaking');
+    const r = await fetch(server+'/voice/speak', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({text, preset:voicePreset}), signal:AbortSignal.timeout(30000)});
+    if(!r.ok){ setCloudState(null); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { setCloudState(null); URL.revokeObjectURL(url); };
+    audio.onerror = () => setCloudState(null);
+    await audio.play();
+  }catch(e){ setCloudState(null); }
+}
+
+function maybeSpeak(text){
+  if(!autoSpeak || !text) return;
+  if(looksLikeReport(text)) return; // don't read data dumps/tables aloud
+  playVoice(text);
+}
+
+// ── Mic input — works on desktop Chrome + iPhone Safari, but only over a
+// secure context (HTTPS or localhost); browsers hard-block getUserMedia
+// otherwise, which is why plain http://192.168.x.x LAN access won't offer it.
+let mediaRecorder = null, micChunks = [], micState = 'idle', micSafetyTimer = null;
+
+function _micSupported(){
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+}
+
+// Push-to-talk: hold the button down to record, release to stop and send.
+// Pointer Events cover mouse + touch + pen with one set of listeners.
+async function startMic(e){
+  if(e) e.preventDefault();
+  if(!server){ openSettings(); return; }
+  if(micState !== 'idle') return;
+  if(!_micSupported()){
+    addMsg('ai', "Mic input needs a secure connection (HTTPS or localhost) — browsers block microphone access otherwise.\n\nOn your iPhone: run `python remote.py` on the PC and connect using that https:// tunnel URL (Settings ⚙️) instead of a plain http:// LAN address.", new Date());
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    // If the user already let go while permission was being granted, don't
+    // start a recording nobody asked for.
+    if(micState !== 'idle'){ stream.getTracks().forEach(t=>t.stop()); return; }
+    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+               : MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4' : '';
+    mediaRecorder = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream);
+    micChunks = [];
+    mediaRecorder.ondataavailable = ev => { if(ev.data.size>0) micChunks.push(ev.data); };
+    mediaRecorder.onstop = () => { stream.getTracks().forEach(t=>t.stop()); transcribeAndSend(); };
+    mediaRecorder.start();
+    micState = 'recording';
+    document.getElementById('micbtn').classList.add('rec');
+    setCloudState('listening');
+    clearTimeout(micSafetyTimer);
+    micSafetyTimer = setTimeout(()=>{ if(micState==='recording') stopMic(); }, 30000); // safety auto-stop
+  }catch(e){
+    micState = 'idle';
+    addMsg('ai', 'Could not access the microphone — check browser permission for this site.', new Date());
+  }
+}
+
+function stopMic(e){
+  if(e) e.preventDefault();
+  if(micState !== 'recording') return;
+  clearTimeout(micSafetyTimer);
+  mediaRecorder.stop(); // fires onstop -> transcribeAndSend()
+}
+// Catch release anywhere on the page, not just on the button — a thumb
+// sliding off a small button mid-press shouldn't leave the mic stuck open.
+window.addEventListener('pointerup', stopMic);
+window.addEventListener('pointercancel', stopMic);
+
+async function transcribeAndSend(){
+  micState = 'busy';
+  const btn = document.getElementById('micbtn');
+  btn.classList.remove('rec'); btn.classList.add('busy');
+  setCloudState('thinking');
+  try{
+    const blob = new Blob(micChunks, {type: (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm'});
+    if(blob.size < 400){ setCloudState(null); return; } // effectively empty recording
+    const fd = new FormData();
+    fd.append('audio', blob, 'speech.webm');
+    // Generous timeout: the very first transcription after a server restart
+    // has to finish loading the speech model (and fail over CPU if the GPU
+    // path isn't usable) before it can even start decoding.
+    const r = await fetch(server+'/voice/transcribe', {method:'POST', headers:_plainHeaders(), body:fd, signal:AbortSignal.timeout(90000)});
+    const d = await r.json();
+    setCloudState(null);
+    if(!r.ok || d.error){ addMsg('ai', '🎤 ' + (d.error || "Didn't catch that."), new Date()); return; }
+    document.getElementById('inp').value = d.text;
+    send();
+  }catch(e){
+    setCloudState(null);
+    const msg = e.name === 'TimeoutError'
+      ? "Transcription is taking unusually long (>90s) — the speech model may still be loading for the first time. Try again in a moment."
+      : 'Transcription failed: ' + e.message;
+    addMsg('ai', '🎤 ' + msg, new Date());
+  } finally {
+    micState = 'idle';
+    btn.classList.remove('busy');
+  }
+}
+
+(function initMicAvailability(){
+  if(!_micSupported()){
+    const b = document.getElementById('micbtn');
+    if(b) b.title = 'Mic needs HTTPS or localhost — see Settings for the remote (ngrok) URL';
+  }
+})();
+
+// ── Font preference (family + size) ────────────────────────────
+function applyFont(){
+  const fam = document.getElementById('fontsel').value;
+  const fs  = document.getElementById('fontsize').value;
+  document.documentElement.style.setProperty('--chatfont', fam);
+  document.documentElement.style.setProperty('--chatfs', fs + 'px');
+  localStorage.setItem('j3_font', fam);
+  localStorage.setItem('j3_fontsize', fs);
+}
+(function restoreFont(){
+  const fam = localStorage.getItem('j3_font');
+  const fs  = localStorage.getItem('j3_fontsize');
+  if (fam){
+    document.documentElement.style.setProperty('--chatfont', fam);
+    const sel = document.getElementById('fontsel');
+    if (sel) sel.value = fam;
+  }
+  if (fs){
+    document.documentElement.style.setProperty('--chatfs', fs + 'px');
+    const sz = document.getElementById('fontsize');
+    if (sz) sz.value = fs;
+  }
+})();
+
+// Handle ?q= shortcut links (from PWA shortcuts)
+const _qs = new URLSearchParams(location.search).get('q');
+if (_qs && server) setTimeout(() => { document.getElementById('inp').value = _qs; send(); }, 800);
+
+function fmt(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) }
+function resize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px' }
+function scrollDown(){ const m=document.getElementById('msgs'); m.scrollTo({top:m.scrollHeight,behavior:'smooth'}) }
+
+function _sessionOk() {
+  return sessionToken && sessionExpiry && new Date(sessionExpiry) > new Date();
+}
+
+function _plainHeaders() {
+  // Auth headers without Content-Type (for GET requests)
+  if (_sessionOk()) return {'X-Session-Token': sessionToken};
+  if (apiKey) return {'X-API-Key': apiKey};
+  return {};
+}
+
+function _authHeaders() {
+  return {'Content-Type': 'application/json', ..._plainHeaders()};
+}
+
+async function _getSession(url, key) {
+  // Exchange API key for a 180-day session token
+  try {
+    const hdrs = {'Content-Type': 'application/json'};
+    if (key) hdrs['X-API-Key'] = key;
+    const r = await fetch(url + '/auth', {
+      method: 'POST',
+      headers: hdrs,
+      body: JSON.stringify({api_key: key}),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.session_token) {
+        sessionToken  = d.session_token;
+        sessionExpiry = d.expires;
+        localStorage.setItem('j3_session',     sessionToken);
+        localStorage.setItem('j3_session_exp', sessionExpiry);
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+async function ping(){
+  if(!server) return;
+  try{
+    const r = await fetch(server+'/health', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(5000)
+    });
+    const on = r.ok;
+    document.getElementById('dot').className = on ? 'dot on' : 'dot';
+    if (on) {
+      const d = await r.json();
+      const remote = server.startsWith('https://') && !server.includes('192.168') && !server.includes('10.') && !server.includes('100.');
+      isRemote = remote;
+      document.getElementById('stxt').textContent = remote ? 'REMOTE' : 'ONLINE';
+      const cm = document.getElementById('conn-mode');
+      if (cm) cm.textContent = remote ? 'Connected remotely (cellular OK)' : 'Connected on local network';
+      // Ollama AI engine dot — green = serving, red = offline/degraded
+      const aiOn = d.ollama ? d.ollama.running : String(d.ai||'').startsWith('online');
+      document.getElementById('aidot').className = aiOn ? 'dot on' : 'dot';
+      document.getElementById('aitxt').textContent = aiOn ? 'AI' : 'AI OFF';
+      document.getElementById('aipill').title = d.ollama
+        ? (d.ollama.running
+            ? 'Ollama running — model ' + d.ollama.model + (d.ollama.model_present ? '' : ' (NOT PULLED)')
+            : 'Ollama offline — run: ollama serve')
+        : 'Ollama AI engine';
+    } else {
+      document.getElementById('stxt').textContent = 'OFFLINE';
+      document.getElementById('aidot').className = 'dot';
+      document.getElementById('aitxt').textContent = 'AI OFF';
+    }
+  } catch {
+    document.getElementById('dot').className = 'dot';
+    document.getElementById('stxt').textContent = 'OFFLINE';
+    document.getElementById('aidot').className = 'dot';
+    document.getElementById('aitxt').textContent = 'AI OFF';
+  }
+}
+
+function setTab(cat, btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const panel = document.getElementById('qpanel');
+  const grid  = document.getElementById('qgrid');
+  const items = TABS[cat];
+  if(!items || !items.length){ panel.classList.remove('show'); return; }
+  grid.innerHTML = items.map(x =>
+    `<div class="qitem" onclick="qs('${x.m.replace(/'/g,"\\'")}')">
+       <span class="qi">${x.i}</span><span class="ql">${x.l}</span>
+     </div>`
+  ).join('');
+  panel.classList.add('show');
+}
+
+function _fileIcon(ext) {
+  const icons = {'.pdf':'📄','.xlsx':'📊','.xls':'📊','.csv':'📈',
+    '.docx':'📝','.txt':'📋','.png':'🖼️','.jpg':'🖼️','.zip':'📦','.html':'🌐'};
+  return icons[ext] || '📁';
+}
+
+function _humanSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'KB';
+  return (bytes/1024/1024).toFixed(1) + 'MB';
+}
+
+function addMsg(role, text, time, files){
+  const c = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const isAI = role === 'ai';
+
+  const IMAGE_EXT = ['png','jpg','jpeg','gif','webp'];
+  let fileHtml = '';
+  if (files && files.length) {
+    fileHtml = files.map(f => {
+      const ext   = f.name.split('.').pop().toLowerCase();
+      const authQ = _sessionOk() ? `&session=${encodeURIComponent(sessionToken)}`
+                  : apiKey       ? `&key=${encodeURIComponent(apiKey)}` : '';
+      const dlUrl = `${server}/download?path=${encodeURIComponent(f.path)}${authQ}`;
+
+      if (IMAGE_EXT.includes(ext)) {
+        return `<a class="img-wrap" href="${dlUrl}" target="_blank" rel="noopener">
+          <img class="chart-img" src="${dlUrl}" alt="${esc(f.name)}" loading="lazy">
+          <div class="img-cap">${esc(f.name)} · tap to view full size</div>
+        </a>`;
+      }
+      const icon = _fileIcon('.'+ext);
+      return `<a class="fcard" href="${dlUrl}" target="_blank" rel="noopener">
+        <span class="ficon">${icon}</span>
+        <div class="fmeta">
+          <div class="fname">${esc(f.name)}</div>
+          <div class="fsize">${_humanSize(f.size)}</div>
+        </div>
+        <span class="fdl">DOWNLOAD</span>
+      </a>`;
+    }).join('');
+  }
+
+  const bblCls = (isAI && looksLikeReport(text)) ? 'bbl report' : 'bbl';
+  d.innerHTML = `<div class="av ${role}">${isAI?'AI':'👤'}</div>
+    <div style="flex:1;min-width:0"><div class="${bblCls}">${esc(text)}</div>
+    ${fileHtml}
+    <div class="ts">${fmt(time||new Date())}</div></div>`;
+  c.appendChild(d);
+  scrollDown();
+}
+
+// Detect tool-report output (aligned columns, rules, bars) that needs monospace
+function looksLikeReport(t){
+  if(!t) return false;
+  if(/[─│═━█░▲▼]/.test(t)) return true;                 // rules / bars / arrows
+  const lines = t.split('\n');
+  if(lines.length < 3) return false;
+  let aligned = 0;
+  for(const l of lines){
+    if(/\S\s{3,}\S/.test(l) || /^\s{2,}\S/.test(l)) aligned++;
+  }
+  return aligned >= 3;                                   // 3+ column-style lines
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+function showTyping(){
+  const c=document.getElementById('msgs');
+  const d=document.createElement('div');
+  d.id='typing'; d.className='msg ai';
+  d.innerHTML='<div class="av ai">AI</div><div><div class="bbl typing"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';
+  c.appendChild(d); scrollDown();
+  setCloudState('thinking');
+}
+function hideTyping(){ const t=document.getElementById('typing'); if(t) t.remove(); setCloudState(null); }
+
+async function send(){
+  if(busy) return;
+  const inp = document.getElementById('inp');
+  const txt = inp.value.trim();
+  if(!txt) return;
+
+  if(!server){
+    openSettings();
+    return;
+  }
+
+  inp.value=''; inp.style.height='auto';
+  addMsg('u', txt, new Date());
+  busy=true; document.getElementById('sbtn').disabled=true;
+  showTyping();
+
+  try{
+    const r = await fetch(server+'/chat', {
+      method:  'POST',
+      headers: _authHeaders(),
+      body:    JSON.stringify({message:txt}),
+      signal:  AbortSignal.timeout(120000),
+    });
+    hideTyping();
+    if(r.ok){
+      const d = await r.json();
+      addMsg('ai', d.reply, new Date(), d.files || []);
+      maybeSpeak(d.reply);
+    } else if (r.status === 401) {
+      addMsg('ai', 'Authentication failed.\n\nCheck your API key in Settings ⚙️.\nGet the key from the terminal where you ran: python remote.py', new Date());
+    } else {
+      addMsg('ai', `Server error (${r.status}). Check that JARVIS is running on your PC.`, new Date());
+    }
+  } catch(e){
+    hideTyping();
+    if(e.name==='TimeoutError'){
+      addMsg('ai','JARVIS is taking a while (>2 min) — it may still be processing. Try again.',new Date());
+    } else if(!server){
+      addMsg('ai','No server configured. Tap ⚙️ to set up.',new Date());
+    } else {
+      const hint = isRemote
+        ? `• Check that JARVIS is still running on your PC\n• Verify the tunnel URL hasn't changed (re-run python remote.py)`
+        : `• Make sure START_JARVIS.bat or python server.py is running on your PC\n• Phone and PC must be on the same WiFi network`;
+      addMsg('ai',`Can't reach JARVIS.\n\n${hint}\n\nServer: ${server}`,new Date());
+    }
+  }
+  busy=false; document.getElementById('sbtn').disabled=false;
+}
+
+function qs(msg){
+  document.getElementById('inp').value = msg;
+  if(!msg.endsWith(' ') && !msg.endsWith(':')){
+    send();
+  } else {
+    document.getElementById('inp').focus();
+  }
+}
+
+function onKey(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+}
+
+// ── Settings ──────────────────────────────────────────────────
+function openSettings(){
+  document.getElementById('ipinput').value = server;
+  document.getElementById('keyinput').value = apiKey;
+  document.getElementById('cres').textContent = 'Tap TEST CONNECTION to verify';
+  const si = document.getElementById('sess-info');
+  if (si) {
+    if (_sessionOk()) {
+      const exp = new Date(sessionExpiry);
+      si.textContent = `Session expires: ${exp.toLocaleDateString()} (180d auth)`;
+      si.style.color = 'var(--green)';
+    } else if (apiKey) {
+      si.textContent = 'No session — tap TEST to get 180-day token';
+      si.style.color = 'var(--muted)';
+    } else {
+      si.textContent = '';
+    }
+  }
+  document.getElementById('smodal').classList.add('open');
+  loadVoicePresets();
+  setTimeout(()=>{ document.getElementById('ipinput').focus(); }, 400);
+}
+
+function closeSettings(){
+  document.getElementById('smodal').classList.remove('open');
+}
+
+async function save(){
+  let v = document.getElementById('ipinput').value.trim();
+  let k = document.getElementById('keyinput').value.trim();
+  if(!v){
+    document.getElementById('cres').textContent = '⚠️ Enter a server URL.';
+    return;
+  }
+  if(!v.startsWith('http')) v = (v.includes('ngrok') || v.includes('cloudflare') ? 'https://' : 'http://') + v;
+  server = v; apiKey = k;
+  localStorage.setItem('j3_server', server);
+  localStorage.setItem('j3_apikey', apiKey);
+  // Get a 180-day session token so raw API key isn't sent every request
+  if (k) await _getSession(v, k);
+  closeSettings();
+  ping();
+  const remote = server.startsWith('https://') && !server.includes('192.168') && !server.includes('10.');
+  const sessMsg = _sessionOk() ? '\nSession valid 180 days — no re-auth needed.' : '';
+  addMsg('ai', `Connected to JARVIS${remote ? ' remotely' : ''}.\n${remote ? 'Works over cellular.' : 'Works on this WiFi network.'}${sessMsg}\nAsk me anything!`, new Date());
+}
+
+async function testConn(){
+  let v = document.getElementById('ipinput').value.trim();
+  let k = document.getElementById('keyinput').value.trim();
+  if(!v){ document.getElementById('cres').textContent='⚠️ Enter server URL first.'; return; }
+  if(!v.startsWith('http')) v = (v.includes('ngrok') || v.includes('cloudflare') ? 'https://' : 'http://') + v;
+  document.getElementById('cres').textContent = '⏳ Testing...';
+  try{
+    const hdrs = k ? {'X-API-Key': k} : {};
+    const r = await fetch(v+'/health', {headers: hdrs, signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const d = await r.json();
+      const tunnelInfo = d.tunnel ? ` · Tunnel: active` : '';
+      // Exchange API key for a 180-day session token
+      let sessMsg = '';
+      if (k) {
+        const ok = await _getSession(v, k);
+        if (ok) {
+          const exp = new Date(sessionExpiry);
+          sessMsg = ` · Session: ${exp.toLocaleDateString()} (180d)`;
+        }
+      }
+      document.getElementById('cres').textContent =
+        `✅ Connected! ${d.tools||90} tools · AI: ${d.ai||'?'}${tunnelInfo}${sessMsg}`;
+    } else if (r.status === 401) {
+      document.getElementById('cres').textContent = '❌ Auth failed — check API key';
+    } else {
+      document.getElementById('cres').textContent = `❌ Server error ${r.status}`;
+    }
+  } catch {
+    document.getElementById('cres').textContent =
+      '❌ Could not connect. Is JARVIS running? Is the URL correct?';
+  }
+}
+
+async function clearChat(){
+  try{ await fetch(server+'/clear',{method:'POST', headers: _authHeaders()}); } catch{}
+  document.getElementById('msgs').innerHTML='';
+  addMsg('ai','History cleared. Fresh start!',new Date());
+  closeSettings();
+}
+
+// ── File browser ──────────────────────────────────────────────
+async function openFiles(){
+  closeSettings();
+  if(!server){ addMsg('ai','Not connected. Set up your server first.', new Date()); return; }
+
+  addMsg('ai', 'Fetching files from your PC...', new Date());
+  try {
+    const r = await fetch(server+'/files', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    if(!r.ok){ addMsg('ai', `Error loading files (${r.status})`, new Date()); return; }
+    const d = await r.json();
+    const files = d.files || [];
+
+    if(!files.length){
+      addMsg('ai', 'No files found in ~/Documents/JARVIS/ yet.\n\nFiles JARVIS generates (reports, PDFs, spreadsheets) will appear here.', new Date());
+      return;
+    }
+
+    // Build a fake "message" with all files as download cards
+    const c    = document.getElementById('msgs');
+    const msg  = document.createElement('div');
+    msg.className = 'msg ai';
+    const cards = files.slice(0, 20).map(f => {
+      const ext   = ('.' + f.name.split('.').pop()).toLowerCase();
+      const icon  = _fileIcon(ext);
+      const authQ = _sessionOk() ? `&session=${encodeURIComponent(sessionToken)}`
+                  : apiKey       ? `&key=${encodeURIComponent(apiKey)}` : '';
+      const dlUrl = `${server}/download?path=${encodeURIComponent(f.path)}${authQ}`;
+      return `<a class="fcard" href="${dlUrl}" target="_blank" rel="noopener">
+        <span class="ficon">${icon}</span>
+        <div class="fmeta">
+          <div class="fname">${esc(f.name)}</div>
+          <div class="fsize">${_humanSize(f.size)} · ${f.modified}</div>
+        </div>
+        <span class="fdl">OPEN</span>
+      </a>`;
+    }).join('');
+
+    msg.innerHTML = `<div class="av ai">AI</div>
+      <div>
+        <div class="bbl">Files on your PC (${files.length} total):</div>
+        ${cards}
+        <div class="ts">${fmt(new Date())}</div>
+      </div>`;
+    c.appendChild(msg);
+    scrollDown();
+  } catch(e) {
+    addMsg('ai', `Could not load files: ${e.message}`, new Date());
+  }
+}
+
+// ── Commands reference ─────────────────────────────────────────
+// These are just example phrasings you can tap to send — Jarvis understands
+// the same request said a dozen other casual ways too through normal chat.
+async function openCommands(){
+  if(!server){ addMsg('ai','Not connected. Set up your server first.', new Date()); return; }
+  try {
+    const r = await fetch(server+'/commands', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    if(!r.ok){ addMsg('ai', `Error loading commands (${r.status})`, new Date()); return; }
+    const d = await r.json();
+    const cats = d.categories || [];
+    if(!cats.length){ addMsg('ai', 'No commands available.', new Date()); return; }
+
+    const c = document.getElementById('msgs');
+    const msg = document.createElement('div');
+    msg.className = 'msg ai';
+    const body = cats.map(cat => {
+      const rows = cat.items.map(it => {
+        const learned = it.learned_example
+          ? `<div class="cmd-learned" onclick="event.stopPropagation();qs('${it.learned_example.replace(/'/g,"\\'")}')">
+               You usually say: "${esc(it.learned_example)}" (${it.learned_count}×)
+             </div>`
+          : '';
+        const output = it.output
+          ? `<div class="cmd-output"><b>→</b> ${esc(it.output)}</div>`
+          : '';
+        return `<div class="cmd-item" onclick="qs('${it.example.replace(/'/g,"\\'")}')">
+           <div class="cmd-label">${esc(it.label)}</div>
+           <div class="cmd-example">"${esc(it.example)}"</div>
+           ${output}
+           ${learned}
+         </div>`;
+      }).join('');
+      return `<div class="cmd-cat">${esc(cat.category)}</div>${rows}`;
+    }).join('');
+
+    msg.innerHTML = `<div class="av ai">AI</div>
+      <div>
+        <div class="bbl">Tap any command below to run it — or just say it your own way, I'll understand either.</div>
+        ${body}
+        <div class="ts">${fmt(new Date())}</div>
+      </div>`;
+    c.appendChild(msg);
+    scrollDown();
+  } catch(e) {
+    addMsg('ai', `Could not load commands: ${e.message}`, new Date());
+  }
+}
+
+// ── Tools catalog ──────────────────────────────────────────────
+// Read-only reference: every tool registered on the server + what it does.
+// Unlike Commands (tappable phrasings), this is the full capability map.
+async function openTools(){
+  if(!server){ addMsg('ai','Not connected. Set up your server first.', new Date()); return; }
+  try {
+    const r = await fetch(server+'/tools', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    if(!r.ok){ addMsg('ai', `Error loading tools (${r.status})`, new Date()); return; }
+    const d = await r.json();
+    const cats = d.categories || [];
+    if(!cats.length){ addMsg('ai', 'No tools reported.', new Date()); return; }
+
+    const c = document.getElementById('msgs');
+    const msg = document.createElement('div');
+    msg.className = 'msg ai';
+    const body = cats.map(cat => {
+      const rows = cat.items.map(it =>
+        `<div class="tool-item">
+           <div class="tool-name">${esc(it.tool)}</div>
+           ${it.desc ? `<div class="tool-desc">${esc(it.desc)}</div>` : ''}
+         </div>`).join('');
+      return `<div class="cmd-cat">${esc(cat.category)} (${cat.items.length})</div>${rows}`;
+    }).join('');
+
+    msg.innerHTML = `<div class="av ai">AI</div>
+      <div>
+        <div class="bbl">${d.total} tools loaded. This is everything I can do — just ask in plain words, no special syntax needed.</div>
+        ${body}
+        <div class="ts">${fmt(new Date())}</div>
+      </div>`;
+    c.appendChild(msg);
+    scrollDown();
+  } catch(e) {
+    addMsg('ai', `Could not load tools: ${e.message}`, new Date());
+  }
+}
+
+// ── Reminder delivery ──────────────────────────────────────────
+// Poll /reminders/due every 30s — due reminders pop into the chat as Jarvis
+// messages (plus a system notification when the PWA has permission).
+async function pollReminders(){
+  if(!server) return;
+  try{
+    const r = await fetch(server+'/reminders/due', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(8000)
+    });
+    if(!r.ok) return;
+    const d = await r.json();
+    for(const text of (d.due || [])){
+      addMsg('ai', text, new Date());
+      try{
+        if(Notification.permission === 'granted'){
+          new Notification('JARVIS', {body: text.replace(/^⏰\s*/, '')});
+        } else if(Notification.permission === 'default'){
+          Notification.requestPermission();
+        }
+      }catch{}
+    }
+  }catch{}
+}
+setInterval(pollReminders, 30000);
+
+// ── Markets dashboard ──────────────────────────────────────────
+let mkTimer = null, mkParams = {}, mkCountTimer = null;
+const MK_SECTORS = ["Technology","Healthcare","Energy","Financials","Consumer",
+                    "Industrials","Materials","Utilities","Real Estate","Communication"];
+
+function mkHourOpts(){
+  const opts = [];
+  for(let h=4; h<=20; h++) for(const m of [0,30]){
+    const v = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const ap = h>=12?'PM':'AM', h12 = h%12||12;
+    opts.push(`<option value="${v}">${h12}:${String(m).padStart(2,'0')} ${ap}</option>`);
+  }
+  return opts.join('');
+}
+
+async function openMarkets(){
+  if(!server){ addMsg('ai','Not connected. Set up your server first.', new Date()); return; }
+  document.getElementById('mkmodal').classList.add('open');
+  document.getElementById('mk-hstart').innerHTML = mkHourOpts();
+  document.getElementById('mk-hend').innerHTML = mkHourOpts();
+  await mkLoadParams();
+  await mkRefreshPortfolio();
+  await mkRefreshGoal();
+  await mkRefreshOutlook();
+  if(mkTimer) clearInterval(mkTimer);
+  mkTimer = setInterval(()=>{ mkRefreshPortfolio(); mkRefreshGoal(); mkRefreshOutlook(); }, 30000);
+}
+
+// ── Market outlook header (VIX + SPY trend + breadth + volume + geo) ────
+async function mkRefreshOutlook(){
+  try{
+    const r = await fetch(server+'/market-outlook', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    const o = await r.json();
+    const el = document.getElementById('mk-outlook');
+    const meaning = document.getElementById('mk-outlookmeaning');
+    if(!o || o.error){ el.textContent = '—'; return; }
+    const col = o.mode==='AGGRESSIVE' ? 'var(--green,#00ff88)' :
+                o.mode==='NORMAL'     ? 'var(--accent)' :
+                o.mode==='SELECTIVE'  ? '#ffd600' :
+                o.mode==='CAUTIOUS'   ? '#ff9900' : 'var(--red)';
+    const tag = o.forced ? ' [forced]' : (o.ignored_today ? ' [ignored today]' : '');
+    el.innerHTML = `<span style="color:${col}">${o.mode} (${o.score}/100)</span>${tag}`;
+    meaning.textContent = (o.meaning||'') + (o.components ? '  ·  ' + o.components.join(' · ') : '');
+  }catch(e){}
+}
+
+// ── Goal tracker (Feature 1) ────────────────────────────────────
+async function mkRefreshGoal(){
+  try{
+    const r = await fetch(server+'/goal', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    const g = await r.json();
+    const el = document.getElementById('mk-goal');
+    if(!g || !g.target_value){
+      el.innerHTML = 'No goal set — type one below and JARVIS adapts its entire trading behavior to it.';
+      return;
+    }
+    const pct = Math.max(0, Math.min(100, g.progress_pct||0));
+    const col = g.on_track ? 'var(--green,#00ff88)' : '#ffd600';
+    el.innerHTML =
+      `<div style="color:#d8e4f0">${esc(g.text||'')}</div>`+
+      `<div style="margin:6px 0;background:#0f1624;border:1px solid #1e3a5f;border-radius:6px;height:14px;overflow:hidden">`+
+        `<div style="width:${pct}%;height:100%;background:${col}"></div></div>`+
+      `$${Math.round(g.start_value||0).toLocaleString()} → $${Math.round(g.target_value||0).toLocaleString()}`+
+      ` · ${pct.toFixed(1)}%`+
+      ` · need +$${Math.round(g.required_daily_dollars||0).toLocaleString()}/day (${g.required_daily_pct}%/day)`+
+      ` · pace +$${Math.round(g.pace_daily_dollars||0).toLocaleString()}/day`+
+      ` · ${g.trading_days_left} trading day(s) left`+
+      ` · <b style="color:${col}">${g.on_track?'ON TRACK':'BEHIND'}</b>`+
+      ` · profile ${String(g.profile||'').replace('_',' ').toUpperCase()}${g.hold_profile?' (HELD)':''}`;
+  }catch(e){}
+}
+async function mkGoalSet(){
+  const t = document.getElementById('mk-goaltext').value.trim();
+  if(!t) return;
+  try{
+    const r = await fetch(server+'/goal', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({text:t}), signal:AbortSignal.timeout(12000)});
+    const d = await r.json();
+    if(d.error) addMsg('ai', '⚠ '+d.error, new Date());
+    else if(d.message) addMsg('ai', d.message, new Date());
+    document.getElementById('mk-goaltext').value='';
+    mkRefreshGoal(); mkLoadParams();
+  }catch(e){}
+}
+async function mkGoalAction(a){
+  try{
+    const r = await fetch(server+'/goal', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({action:a}), signal:AbortSignal.timeout(8000)});
+    const d = await r.json();
+    if(d.message) addMsg('ai', d.message, new Date());
+    mkRefreshGoal();
+  }catch(e){}
+}
+function closeMarkets(){
+  document.getElementById('mkmodal').classList.remove('open');
+  if(mkTimer){ clearInterval(mkTimer); mkTimer = null; }
+}
+
+async function mkLoadParams(){
+  try{
+    const r = await fetch(server+'/risk-params', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    mkParams = await r.json();
+    mkRender();
+  }catch(e){}
+}
+
+function mkRender(){
+  const p = mkParams;
+  document.querySelectorAll('#mk-profile button').forEach(b=>
+    b.classList.toggle('on', b.dataset.p===p.risk_profile));
+  mkSetSlider('mk-possize', p.max_position_pct); mkSlide('possize');
+  mkSetSlider('mk-dailyloss', p.max_daily_loss_pct); mkSlide('dailyloss');
+  mkSetSlider('mk-conviction', p.min_conviction); mkSlide('conviction');
+  mkSetSlider('mk-stoploss', p.stop_loss_pct); mkSlide('stoploss');
+  mkSetSlider('mk-takeprofit', p.take_profit_pct); mkSlide('takeprofit');
+  mkSetSlider('mk-reserve', p.min_cash_reserve_pct); mkSlide('reserve');
+  document.getElementById('mk-hstart').value = p.trading_hours_start;
+  document.getElementById('mk-hend').value = p.trading_hours_end;
+  const at = document.getElementById('mk-autotoggle');
+  at.classList.toggle('on', p.autonomous_enabled);
+  document.getElementById('mk-autodot').classList.toggle('on', p.autonomous_enabled);
+  document.getElementById('mk-autotext').textContent =
+    p.autonomous_enabled ? 'ON — trading per parameters' : 'OFF — analysis only';
+  const mt = document.getElementById('mk-modetoggle');
+  mt.classList.toggle('live', p.live_trading);
+  const mx = document.getElementById('mk-modetext');
+  mx.textContent = p.live_trading ? 'LIVE TRADING' : 'PAPER TRADING';
+  mx.style.color = p.live_trading ? 'var(--red)' : 'var(--accent)';
+  const chips = document.getElementById('mk-blocked');
+  chips.innerHTML = (p.blocked_tickers||[]).map(t=>
+    `<span class="mkchip">${esc(t)}<b onclick="mkBlockRemove('${esc(t)}')">✕</b></span>`).join('')
+    || '<span style="font-size:11px;color:var(--muted)">none blocked</span>';
+  const sec = document.getElementById('mk-sectors');
+  sec.innerHTML = MK_SECTORS.map(s=>
+    `<label><input type="checkbox" value="${s}" ${(p.allowed_sectors||[]).includes(s)?'checked':''}
+      onchange="mkSectorChange()"> ${s}</label>`).join('');
+}
+
+function mkSetSlider(id, val){ document.getElementById(id).value = val; }
+function mkSlide(which){
+  const v = {
+    possize:   ()=>document.getElementById('mk-posval').textContent = (+document.getElementById('mk-possize').value).toFixed(1)+'%',
+    dailyloss: ()=>document.getElementById('mk-lossval').textContent = (+document.getElementById('mk-dailyloss').value).toFixed(1)+'%',
+    reserve:   ()=>document.getElementById('mk-reserveval').textContent = (+document.getElementById('mk-reserve').value)+'%',
+    stoploss:  ()=>document.getElementById('mk-stopval').textContent = (+document.getElementById('mk-stoploss').value).toFixed(1)+'%',
+    takeprofit:()=>document.getElementById('mk-tpval').textContent = '+'+(+document.getElementById('mk-takeprofit').value)+'%',
+    conviction:()=>{
+      const n = +document.getElementById('mk-conviction').value;
+      const el = document.getElementById('mk-convval');
+      el.textContent = n+'/10';
+      const col = n<=4 ? 'var(--red)' : n<=7 ? '#ffd600' : 'var(--green)';
+      el.style.color = col;
+      const bar = document.getElementById('mk-convbar');
+      bar.style.width = (n*10)+'%'; bar.style.background = col;
+    },
+  }[which]; if(v) v();
+}
+
+async function mkPost(key, value, cardId){
+  try{
+    const r = await fetch(server+'/risk-params', {
+      method:'POST', headers:_authHeaders(),
+      body: JSON.stringify(typeof key==='object' ? key : {[key]: value}),
+      signal: AbortSignal.timeout(8000)});
+    const d = await r.json();
+    if(!r.ok){ addMsg('ai', '⚠ Setting rejected: '+(d.error||r.status), new Date()); await mkLoadParams(); return; }
+    mkParams = d;
+    if(cardId){
+      const chip = document.querySelector('#'+cardId+' .mksaved');
+      if(chip){ chip.classList.add('show'); setTimeout(()=>chip.classList.remove('show'), 1500); }
+    }
+  }catch(e){}
+}
+
+function mkProfile(name){
+  mkPost({risk_profile: name}, null, 'card-profile').then(()=>{
+    // animate sliders to the preset values
+    const targets = {['mk-possize']:mkParams.max_position_pct, ['mk-dailyloss']:mkParams.max_daily_loss_pct,
+                     ['mk-conviction']:mkParams.min_conviction, ['mk-stoploss']:mkParams.stop_loss_pct,
+                     ['mk-takeprofit']:mkParams.take_profit_pct, ['mk-reserve']:mkParams.min_cash_reserve_pct};
+    const starts = {}, t0 = performance.now();
+    for(const id in targets) starts[id] = +document.getElementById(id).value;
+    (function step(t){
+      const k = Math.min(1,(t-t0)/350);
+      for(const id in targets){
+        document.getElementById(id).value = starts[id] + (targets[id]-starts[id])*k;
+      }
+      ['possize','dailyloss','conviction','stoploss','takeprofit','reserve'].forEach(mkSlide);
+      if(k<1) requestAnimationFrame(step);
+      else mkRender();
+    })(t0);
+  });
+}
+
+function mkToggleAuto(){
+  mkPost({autonomous_enabled: !mkParams.autonomous_enabled}, null, 'card-auto').then(mkRender);
+}
+
+function mkToggleMode(){
+  if(mkParams.live_trading){   // live → paper: no confirmation needed
+    mkPost({live_trading:false}, null, 'card-mode').then(mkRender);
+    return;
+  }
+  const cm = document.getElementById('mk-confirm');
+  cm.classList.add('open');
+  document.getElementById('mk-cancelbtn').focus();
+  let left = 10;
+  document.getElementById('mk-count').textContent = left;
+  clearInterval(mkCountTimer);
+  mkCountTimer = setInterval(()=>{
+    left--; document.getElementById('mk-count').textContent = left;
+    if(left<=0) mkLiveConfirm(false);
+  }, 1000);
+}
+function mkLiveConfirm(yes){
+  clearInterval(mkCountTimer);
+  document.getElementById('mk-confirm').classList.remove('open');
+  if(yes) mkPost({live_trading:true}, null, 'card-mode').then(mkRender);
+}
+
+function mkBlockAdd(){
+  const t = (prompt('Ticker to block (e.g. TSLA):')||'').trim().toUpperCase();
+  if(!t || !/^[A-Z]{1,5}$/.test(t)){ if(t) addMsg('ai','Invalid ticker: '+t, new Date()); return; }
+  const list = [...(mkParams.blocked_tickers||[])];
+  if(!list.includes(t)) list.push(t);
+  mkPost({blocked_tickers:list}, null, 'card-blocked').then(mkRender);
+}
+function mkBlockRemove(t){
+  mkPost({blocked_tickers:(mkParams.blocked_tickers||[]).filter(x=>x!==t)}, null, 'card-blocked').then(mkRender);
+}
+function mkSectorChange(){
+  const sel = [...document.querySelectorAll('#mk-sectors input:checked')].map(i=>i.value);
+  if(!sel.length){ addMsg('ai','⚠ At least one sector must stay allowed.', new Date()); mkRender(); return; }
+  mkPost({allowed_sectors:sel}, null, 'card-sectors');
+}
+function mkReset(){
+  mkPost({_reset:true}, null, null).then(()=>{ mkRender();
+    addMsg('ai','Risk parameters reset to defaults.', new Date()); });
+}
+
+function mkSpark(points, up){
+  if(!points || points.length<2) return '';
+  const w=64, h=20, min=Math.min(...points), max=Math.max(...points), span=(max-min)||1;
+  const pts = points.map((p,i)=>`${(i/(points.length-1)*w).toFixed(1)},${(h-2-(p-min)/span*(h-4)).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle">
+    <polyline points="${pts}" fill="none" stroke="${up?'var(--green)':'var(--red)'}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+
+async function mkQueueAct(action, symbol){
+  try{
+    await fetch(server+'/opportunity-queue', {method:'POST', headers:_authHeaders(),
+      body: JSON.stringify({action, symbol}), signal:AbortSignal.timeout(8000)});
+    mkRefreshQueue();
+  }catch(e){}
+}
+
+async function mkRefreshQueue(){
+  try{
+    const r = await fetch(server+'/opportunity-queue', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    const d = await r.json();
+    const el = document.getElementById('mk-queue');
+    if(!(d.queue||[]).length){
+      el.innerHTML = 'Queue empty — the broad scan fills it every 30 min during market hours.';
+      return;
+    }
+    el.innerHTML = d.queue.map((e,i)=>
+      `<div class="tool-item" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--accent);font-weight:700">#${i+1}</span>
+        <span style="color:var(--text);font-weight:700">${esc(e.symbol)}</span>
+        <span>score ${e.score}</span><span>$${(e.price||0).toFixed(2)}</span>
+        <span style="flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((e.reasons||[])[0]||'')}</span>
+        <b style="cursor:pointer;color:var(--green)" onclick="mkQueueAct('promote','${esc(e.symbol)}')">▲</b>
+        <b style="cursor:pointer;color:var(--muted)" onclick="mkQueueAct('demote','${esc(e.symbol)}')">▼</b>
+        <b style="cursor:pointer;color:var(--red)" onclick="mkQueueAct('remove','${esc(e.symbol)}')">✕</b>
+      </div>`).join('');
+  }catch(e){}
+}
+
+async function mkRefreshGeo(){
+  try{
+    const r = await fetch(server+'/geo-risk', {headers:_plainHeaders(), signal:AbortSignal.timeout(8000)});
+    const d = await r.json();
+    const el = document.getElementById('mk-geo');
+    const col = d.score<=30?'var(--green)':d.score<=60?'#ffd600':'var(--red)';
+    el.textContent = `${d.score}/100 — ${d.band}`;
+    el.style.color = col;
+    document.getElementById('mk-geocard').style.borderColor = d.score>60?'var(--red)':'var(--border)';
+    document.getElementById('mk-geomeaning').textContent =
+      {NORMAL:'normal parameters', ELEVATED:'position sizes -25%, defensive tilt',
+       HIGH:'position sizes -50%, defensive only', CRITICAL:'NEW POSITIONS HALTED'}[d.band]||'';
+  }catch(e){}
+}
+
+async function mkRefreshPortfolio(){
+  mkRefreshQueue();
+  mkRefreshGeo();
+  try{
+    const r = await fetch(server+'/portfolio/positions', {headers:_plainHeaders(), signal:AbortSignal.timeout(20000)});
+    const d = await r.json();
+    const a = d.account||{};
+    if(a.equity!=null){
+      document.getElementById('mk-equity').textContent = '$'+a.equity.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+      const pl = document.getElementById('mk-daypl');
+      pl.textContent = `${a.day_pl>=0?'+':''}$${Math.abs(a.day_pl).toFixed(2)} (${a.day_pl_pct>=0?'+':''}${a.day_pl_pct}%)`;
+      pl.className = 'pstat-v ' + (a.day_pl>=0?'g':'r');
+      document.getElementById('mk-cash').textContent =
+        '$'+(a.cash||0).toLocaleString(undefined,{maximumFractionDigits:0})+' / $'+(a.buying_power||0).toLocaleString(undefined,{maximumFractionDigits:0});
+      // Daily-limit state on the loss card
+      const hit = mkParams.max_daily_loss && a.day_pl <= -mkParams.max_daily_loss;
+      document.getElementById('card-loss').classList.toggle('limit-hit', !!hit);
+    }
+    const tb = document.getElementById('mk-positions');
+    if(!(d.positions||[]).length){
+      tb.innerHTML = '<tr><td colspan="8" style="color:var(--muted)">No open positions</td></tr>';
+      return;
+    }
+    tb.innerHTML = d.positions.map(p=>{
+      const cls = p.pl>=0 ? 'pos-g' : 'pos-r';
+      return `<tr class="${cls}"><td>${esc(p.symbol)}</td><td>${mkSpark(p.spark, p.today_pct>=0)}</td>
+        <td>${p.qty}</td><td>$${p.avg_cost.toFixed(2)}</td><td>$${p.price.toFixed(2)}</td>
+        <td>${p.today_pct>=0?'+':''}${p.today_pct}%</td>
+        <td>${p.pl>=0?'+':''}$${Math.abs(p.pl).toFixed(2)}</td>
+        <td>${p.pl_pct>=0?'+':''}${p.pl_pct}%</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+
+// ── Portfolio live tracker ─────────────────────────────────────
+let portfolioTimer = null;
+
+async function openPortfolio(){
+  if(!server){ addMsg('ai','Not connected. Set up your server first.', new Date()); return; }
+  document.getElementById('pmodal').classList.add('open');
+  await refreshPortfolio();
+  if (portfolioTimer) clearInterval(portfolioTimer);
+  portfolioTimer = setInterval(refreshPortfolio, 15000);
+}
+
+function closePortfolio(){
+  document.getElementById('pmodal').classList.remove('open');
+  if (portfolioTimer) { clearInterval(portfolioTimer); portfolioTimer = null; }
+}
+
+async function refreshPortfolio(){
+  const body = document.getElementById('pbody');
+  try {
+    const r = await fetch(server+'/portfolio/live', {
+      headers: _plainHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    const d = await r.json();
+    if(!r.ok || d.error){
+      body.innerHTML = `<div class="pempty">${esc(d.error || ('Error ' + r.status))}</div>`;
+      return;
+    }
+    renderPortfolio(d);
+  } catch(e) {
+    body.innerHTML = `<div class="pempty">Could not load portfolio: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderPortfolio(d){
+  const modeEl = document.getElementById('pmode');
+  const isLive = d.account_mode === 'LIVE';
+  modeEl.textContent = isLive ? 'LIVE' : 'PAPER';
+  modeEl.className = 'pmode ' + (isLive ? 'live' : 'paper');
+
+  const s   = d.stats || {};
+  const pos = d.positions || [];
+  const closed = (d.closed_trades || []).slice(-5).reverse();
+
+  const pnlClass = v => v >= 0 ? 'g' : 'r';
+
+  let html = `<div class="pstats">
+    <div class="pstat"><div class="pstat-l">Est. Capital</div><div class="pstat-v">$${(s.est_capital||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+    <div class="pstat"><div class="pstat-l">Progress</div><div class="pstat-v ${pnlClass(s.progress_pct||0)}">${(s.progress_pct||0)>=0?'+':''}${(s.progress_pct||0).toFixed(2)}%</div></div>
+    <div class="pstat"><div class="pstat-l">Budget Free</div><div class="pstat-v">$${(s.budget_remaining||0).toFixed(2)}</div></div>
+    <div class="pstat"><div class="pstat-l">Realized P&amp;L</div><div class="pstat-v ${pnlClass(s.total_realized_pnl||0)}">${(s.total_realized_pnl||0)>=0?'+':''}$${(s.total_realized_pnl||0).toFixed(2)}</div></div>
+    <div class="pstat"><div class="pstat-l">Open P&amp;L</div><div class="pstat-v ${pnlClass(s.open_pnl||0)}">${(s.open_pnl||0)>=0?'+':''}$${(s.open_pnl||0).toFixed(2)}</div></div>
+    <div class="pstat"><div class="pstat-l">Win Rate</div><div class="pstat-v">${(s.win_rate||0).toFixed(0)}% <span style="color:var(--muted);font-size:11px">(${s.wins||0}W/${s.losses||0}L)</span></div></div>
+  </div>`;
+
+  html += `<div class="psec">Open Positions (${pos.length})</div>`;
+  if (!pos.length){
+    html += `<div class="pempty">No open positions.</div>`;
+  } else {
+    html += pos.map(p => `
+      <div class="prow">
+        <div class="prow-top">
+          <span>${esc(p.symbol)} · ${p.qty}sh</span>
+          <span class="${pnlClass(p.pnl)}">${p.pnl>=0?'+':''}$${Math.abs(p.pnl).toFixed(2)} (${p.pnl_pct>=0?'+':''}${p.pnl_pct.toFixed(1)}%)</span>
+        </div>
+        <div class="prow-sub">entry $${p.entry.toFixed(2)} → now $${p.current.toFixed(2)} · conviction ${p.conviction||0}/100
+          ${p.stop ? ` · stop $${p.stop.toFixed(2)} target $${p.target.toFixed(2)}` : ''}
+          ${p.be_stop ? ' · [BE]' : ''}${p.trail ? ' · [TRAIL]' : ''}</div>
+      </div>`).join('');
+  }
+
+  if (closed.length){
+    html += `<div class="psec">Recent Closed Trades</div>`;
+    html += closed.map(t => `
+      <div class="prow">
+        <div class="prow-top">
+          <span>${esc(t.symbol)} · ${t.result}</span>
+          <span class="${pnlClass(t.pnl)}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(2)} (${t.pnl_pct>=0?'+':''}${t.pnl_pct.toFixed(1)}%)</span>
+        </div>
+        <div class="prow-sub">$${t.entry_price.toFixed(2)} → $${t.exit_price.toFixed(2)} · ${t.reason||''}</div>
+      </div>`).join('');
+  }
+
+  if (!isLive){
+    html += `<div class="pstale" style="color:var(--muted)">Paper trading — flip ALPACA_BASE_URL in .env to go live once testing is done.</div>`;
+  }
+  if (d.stale){
+    html += `<div class="pstale">⚠ Data is ${Math.floor((d.age_seconds||0)/60)}m old — monitor may be off.</div>`;
+  }
+  if (!d.monitor_running){
+    html += `<div class="pstale">⚠ Trade monitor is not running — say "start monitor".</div>`;
+  }
+
+  document.getElementById('pbody').innerHTML = html;
+}
+</script>
+</body>
+</html>

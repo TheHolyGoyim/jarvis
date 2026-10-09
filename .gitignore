@@ -1,0 +1,43 @@
+# Personal configuration — never commit these
+.env
+.sessions.json
+.tunnel_url
+pending_actions.json
+
+# Personal data / memory (normally lives outside the repo, under
+# ~/Documents/JARVIS/ — these patterns are defense-in-depth in case that
+# ever changes, or someone runs JARVIS from inside this folder directly)
+*.db
+*.sqlite
+*.sqlite3
+jarvis_brain.db
+data.json
+*.log
+logs/
+
+# Old superseded code, not part of the current app
+.bak_pre_v5/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# YOLO models (large, user downloads separately)
+*.pt
+*.onnx
+
+# User data (stays on each person's machine)
+recordings/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
